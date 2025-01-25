@@ -1,3 +1,3 @@
-pizzaria\src npm run dev
+##pizzaria\src npm run dev
 
-pizzaria\src node server.js
+##pizzaria\src node server.js
