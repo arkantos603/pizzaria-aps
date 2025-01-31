@@ -1,2 +1,2 @@
-pizzaria\src npm run dev <!-- frontend ->>
-pizzaria\src node server.js <!-- banco json ->>
+pizzaria\src npm run dev
+pizzaria\src node server.js
