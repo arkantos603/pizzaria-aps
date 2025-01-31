@@ -4,7 +4,7 @@ import cors from 'cors';
 
 const app = express();
 const PORT = 5000;
-const DATABASE_FILE = './src/banco.json';
+const DATABASE_FILE = './banco.json';
 
 const precoPizzas = {
   Calabresa: { Média: 30, Grande: 40, Gigante: 50 },
@@ -19,73 +19,75 @@ app.get('/pedidos', (req, res) => {
   fs.readFile(DATABASE_FILE, 'utf8', (err, data) => {
     if (err) {
       console.error('Erro ao ler o arquivo:', err);
-      return res.status(500).send('Erro ao ler o arquivo.');
+      return res.status(500).json({ error: 'Erro ao ler o arquivo.' });
     }
-    res.send(JSON.parse(data));
+    try {
+      const pedidos = JSON.parse(data);
+      res.json(pedidos);
+    } catch (parseError) {
+      console.error('Erro ao parsear o JSON:', parseError);
+      res.status(500).json({ error: 'Erro ao parsear o JSON.' });
+    }
   });
 });
 
 app.post('/pedidos', (req, res) => {
   const novoPedido = req.body;
-
-  if (!novoPedido.nome || !novoPedido.endereco || !novoPedido.telefone || !novoPedido.bairro || !novoPedido.sabor || !novoPedido.tamanho || !novoPedido.quantidade) {
-    return res.status(400).json({ message: 'Por favor, preencha todos os campos do pedido.' });
-  }
-
-  const precoPorPizza = precoPizzas[novoPedido.sabor]?.[novoPedido.tamanho];
-  if (!precoPorPizza) {
-    return res.status(400).json({ message: 'Sabor ou tamanho inválido.' });
-  }
-
-  const valorTotal = precoPorPizza * novoPedido.quantidade;
-  novoPedido.valorTotal = valorTotal;
+  const precoPizza = precoPizzas[novoPedido.sabor][novoPedido.tamanho];
+  novoPedido.valorTotal = precoPizza * novoPedido.quantidade;
 
   fs.readFile(DATABASE_FILE, 'utf8', (err, data) => {
     if (err) {
       console.error('Erro ao ler o arquivo:', err);
-      return res.status(500).send('Erro ao ler o arquivo.');
+      return res.status(500).json({ error: 'Erro ao ler o arquivo.' });
     }
+    try {
+      const pedidos = JSON.parse(data);
+      pedidos.push(novoPedido);
 
-    const pedidos = JSON.parse(data);
-    pedidos.push(novoPedido);
-
-    fs.writeFile(DATABASE_FILE, JSON.stringify(pedidos, null, 2), (err) => {
-      if (err) {
-        console.error('Erro ao salvar o pedido:', err);
-        return res.status(500).send('Erro ao salvar o pedido.');
-      }
-      console.log('Pedido salvo com sucesso:', novoPedido);
-      res.status(201).json({ message: 'Pedido salvo com sucesso.', pedido: novoPedido });
-    });
+      fs.writeFile(DATABASE_FILE, JSON.stringify(pedidos, null, 2), (err) => {
+        if (err) {
+          console.error('Erro ao salvar o pedido:', err);
+          return res.status(500).json({ error: 'Erro ao salvar o pedido.' });
+        }
+        console.log('Pedido salvo com sucesso:', novoPedido);
+        res.status(201).json({ message: 'Pedido salvo com sucesso.', pedido: novoPedido });
+      });
+    } catch (parseError) {
+      console.error('Erro ao parsear o JSON:', parseError);
+      res.status(500).json({ error: 'Erro ao parsear o JSON.' });
+    }
   });
 });
 
-app.delete('/pedidos/:id', (req, res) => {
-  const { id } = req.params;
+app.delete('/pedidos/:index', (req, res) => {
+  const index = parseInt(req.params.index, 10);
 
   fs.readFile(DATABASE_FILE, 'utf8', (err, data) => {
     if (err) {
       console.error('Erro ao ler o arquivo:', err);
-      return res.status(500).send('Erro ao ler o arquivo.');
+      return res.status(500).json({ error: 'Erro ao ler o arquivo.' });
     }
+    try {
+      const pedidos = JSON.parse(data);
+      if (index >= 0 && index < pedidos.length) {
+        pedidos.splice(index, 1);
 
-    const pedidos = JSON.parse(data);
-    const pedidoIndex = pedidos.findIndex((pedido, index) => index === parseInt(id));
-
-    if (pedidoIndex === -1) {
-      return res.status(404).send('Pedido não encontrado.');
-    }
-
-    pedidos.splice(pedidoIndex, 1);
-
-    fs.writeFile(DATABASE_FILE, JSON.stringify(pedidos, null, 2), (err) => {
-      if (err) {
-        console.error('Erro ao deletar o pedido:', err);
-        return res.status(500).send('Erro ao deletar o pedido.');
+        fs.writeFile(DATABASE_FILE, JSON.stringify(pedidos, null, 2), (err) => {
+          if (err) {
+            console.error('Erro ao salvar o arquivo:', err);
+            return res.status(500).json({ error: 'Erro ao salvar o arquivo.' });
+          }
+          console.log('Pedido deletado com sucesso:', index);
+          res.status(200).json({ message: 'Pedido deletado com sucesso.' });
+        });
+      } else {
+        res.status(400).json({ error: 'Índice inválido.' });
       }
-      console.log('Pedido deletado com sucesso.');
-      res.status(200).json({ message: 'Pedido deletado com sucesso.' });
-    });
+    } catch (parseError) {
+      console.error('Erro ao parsear o JSON:', parseError);
+      res.status(500).json({ error: 'Erro ao parsear o JSON.' });
+    }
   });
 });
 

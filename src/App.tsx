@@ -26,16 +26,6 @@ function App() {
     setPizza({ ...pizza, [name]: value });
   }
 
-  function fetchPedidos() {
-    fetch('http://localhost:5000/pedidos')
-      .then(response => response.json())
-      .then(data => {
-        console.log('Pedidos atualizados:', data);
-        setPedidos(data);
-      })
-      .catch(error => console.error('Erro ao buscar pedidos:', error));
-  }
-
   function adicionarPedido(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!pizza.sabor || !pizza.tamanho || !pizza.quantidade) {
@@ -55,27 +45,32 @@ function App() {
       .then(response => response.json())
       .then(data => {
         console.log('Pedido adicionado:', data);
-        fetchPedidos();
+        setPedidos(prevPedidos => [...prevPedidos, data.pedido]);
         setPizza({ sabor: '', tamanho: '', quantidade: 1 });
       })
-      .catch(error => console.error('Erro ao adicionar pedido:', error.message));
+      .catch(error => console.error('Erro ao adicionar pedido:', error));
   }
 
-  function deletarPedido(id: number) {
-    fetch(`http://localhost:5000/pedidos/${id}`, {
+  function deletarPedido(index: number) {
+    fetch(`http://localhost:5000/pedidos/${index}`, {
       method: 'DELETE',
     })
-      .then(response => response.json())
-      .then(data => {
-        console.log('Pedido removido:', data);
-        fetchPedidos();
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Erro ao deletar pedido');
+        }
+        return response.json();
       })
-      .catch(error => console.error('Erro ao deletar pedido:', error.message));
+      .then(() => {
+        setPedidos(prevPedidos => prevPedidos.filter((_, i) => i !== index));
+        console.log('Pedido deletado com sucesso:', index);
+      })
+      .catch(error => console.error('Erro ao deletar pedido:', error));
   }
 
   return (
     <div className="pizzaria-wrapper">
-      <h1>Painel da Pizzaria da Hora</h1>
+      <h1>Sistema de Controle da Pizzaria</h1>
       <form className="cliente-form">
         <h2>Cliente</h2>
         <input
@@ -130,7 +125,6 @@ function App() {
           min="1"
         />
         <button type="submit">Adicionar Pedido</button>
-        
       </form>
 
       <ul className="pedidos-list">
@@ -140,7 +134,7 @@ function App() {
             <strong>Cliente:</strong> {pedido.nome} | <strong>Endereço:</strong> {pedido.endereco} |
             <strong> Telefone:</strong> {pedido.telefone} | <strong>Bairro:</strong> {pedido.bairro} |
             <strong> Pizza:</strong> {pedido.sabor} ({pedido.tamanho}) | <strong>Quantidade:</strong> {pedido.quantidade} |
-            <strong> Total:</strong> R${pedido.valorTotal.toFixed(2)}
+            <strong> Total:</strong> R${pedido.valorTotal?.toFixed(2)}
             <button className="delete-button" onClick={() => deletarPedido(index)}>Deletar</button>
           </li>
         ))}
